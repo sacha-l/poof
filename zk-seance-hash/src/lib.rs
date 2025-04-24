@@ -4,6 +4,9 @@
 /// knowledge of `x` such that PoseidonCRH(params, &[x]) == expected_hash.
 /// The circuit is designed to be used with the Groth16 SNARK scheme.
 
+pub mod verifier;
+pub use verifier::verify_proof_bytes;
+
 use ark_bn254::Fr;
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
 use ark_r1cs_std::{alloc::AllocVar, fields::fp::FpVar, eq::EqGadget};
