@@ -1,3 +1,7 @@
+// Defines the zkSNARK constraint system for a * b = c.
+// This struct holds optional private inputs a and b, and public output c.
+// Implements the ConstraintSynthesizer trait to add constraints to the circuit.
+
 use ark_r1cs_std::alloc::AllocVar;
 use ark_r1cs_std::fields::fp::FpVar;
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};

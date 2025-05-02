@@ -1,3 +1,9 @@
+// Utility functions for serializing zkSNARK components to disk.
+// Includes helpers to save:
+// - Verifying key to ../keys/verifying_key.bin
+// - zkSNARK proof to ../proofs/proof.bin
+// - Public input to ../proofs/public_input.bin
+
 use ark_bn254::{Fr};
 use ark_groth16::{Proof, ProvingKey, VerifyingKey};
 use ark_serialize::CanonicalSerialize;

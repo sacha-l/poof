@@ -1,3 +1,9 @@
+// Entry point for generating a zkSNARK proof for a * b = c.
+// 1. Defines example witness values (a = 3, b = 4, c = 12)
+// 2. Constructs the circuit and generates a verifying key using reduction setup
+// 3. Generates a Groth16 proof for the witness values
+// 4. Serializes the verifying key, proof, and public input to disk
+
 mod circuit;
 mod utils;
 
