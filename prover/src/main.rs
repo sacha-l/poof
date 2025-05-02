@@ -51,3 +51,67 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_valid_proof_verifies() {
+        fs::create_dir_all("../keys").unwrap();
+        fs::create_dir_all("../proofs").unwrap();
+
+        let mut rng = thread_rng();
+
+        let a = Fr::from(3u64);
+        let b = Fr::from(4u64);
+        let c = a * b;
+
+        let circuit = MulCircuit { a: None, b: None, c: None };
+        let pk = Groth16::<Bn254>::generate_random_parameters_with_reduction(circuit, &mut rng).unwrap();
+
+        save_verifying_key(&pk.vk).unwrap();
+
+        let circuit_instance = MulCircuit {
+            a: Some(a),
+            b: Some(b),
+            c: Some(c),
+        };
+
+        let proof = Groth16::<Bn254>::create_random_proof_with_reduction(circuit_instance, &pk, &mut rng).unwrap();
+        save_proof(&proof).unwrap();
+        save_public_input(&c).unwrap();
+
+        let pvk = prepare_verifying_key(&pk.vk);
+        let is_valid = Groth16::<Bn254>::verify_proof(&pvk, &proof, &[c]).unwrap();
+        assert!(is_valid, "Expected valid proof to verify successfully");
+    }
+
+    #[test]
+    fn test_invalid_public_input_fails() {
+        fs::create_dir_all("../keys").unwrap();
+        fs::create_dir_all("../proofs").unwrap();
+
+        let mut rng = thread_rng();
+
+        let a = Fr::from(3u64);
+        let b = Fr::from(4u64);
+        let c = a * b;
+        let invalid_c = Fr::from(999u64);
+
+        let circuit = MulCircuit { a: None, b: None, c: None };
+        let pk = Groth16::<Bn254>::generate_random_parameters_with_reduction(circuit, &mut rng).unwrap();
+
+        let circuit_instance = MulCircuit {
+            a: Some(a),
+            b: Some(b),
+            c: Some(c),
+        };
+
+        let proof = Groth16::<Bn254>::create_random_proof_with_reduction(circuit_instance, &pk, &mut rng).unwrap();
+
+        let pvk = prepare_verifying_key(&pk.vk);
+        let is_valid = Groth16::<Bn254>::verify_proof(&pvk, &proof, &[invalid_c]).unwrap();
+        assert!(!is_valid, "Expected invalid proof to fail verification");
+    }
+}
