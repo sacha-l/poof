@@ -12,8 +12,10 @@
 
     ## Expected Calldata Format:
     - 4 bytes: function selector (ignored for now)
-    - 512 bytes: serialized Groth16 proof
-    - 32 bytes: serialized public input (Fr element)
+    - 256 bytes: Groth16 proof (A: G1 = 64, B: G2 = 128, C: G1 = 64)
+    - 32 bytes: Public input (Fr element from BN254)
+
+    Total: 292 bytes
 
     ## Deployment and Use:
     - Embed the verifying key at compile time using `verifying_key_bytes.rs`.
@@ -28,13 +30,12 @@
 use ark_ec::models::bn::Bn;
 use ark_bn254::{Config as Bn254Config};
 
-use ark_groth16::{Groth16, prepare_verifying_key};
+use ark_groth16::{Groth16, prepare_verifying_key, Proof, VerifyingKey};
 use ark_serialize::CanonicalDeserialize;
 use uapi::{HostFn, HostFnImpl as api, ReturnFlags};
 use core::alloc::Layout;
 
 type Bn254 = Bn<Bn254Config>;
-
 
 #[global_allocator]
 static ALLOCATOR: DummyAllocator = DummyAllocator;
@@ -43,12 +44,10 @@ pub struct DummyAllocator;
 
 unsafe impl core::alloc::GlobalAlloc for DummyAllocator {
     unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
-        core::ptr::null_mut() // placeholder: replace with a real allocator if needed
+        core::ptr::null_mut()
     }
 
-    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
-        // no-op
-    }
+    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {}
 }
 
 #[panic_handler]
@@ -67,14 +66,15 @@ pub extern "C" fn deploy() {}
 
 #[polkavm_derive::polkavm_export]
 pub extern "C" fn call() {
-    // Allocate enough for selector (4 bytes) + proof (512 bytes) + input (32 bytes)
-    let mut calldata = [0u8; 4 + 512 + 32];
+    // Allocate enough for selector (4 bytes) + compressed proof (256 bytes) + input (32 bytes)
+    let mut calldata = [0u8; 4 + 256 + 32];
+
     api::call_data_copy(&mut calldata, 0);
 
-    let proof_bytes = &calldata[4..516];
-    let input_bytes = &calldata[516..];
+    let proof_bytes = &calldata[4..260];
+    let input_bytes = &calldata[260..];
 
-    let vk = match CanonicalDeserialize::deserialize_uncompressed(VERIFYING_KEY_BYTES) {
+    let vk: VerifyingKey<Bn254> = match CanonicalDeserialize::deserialize_compressed(VERIFYING_KEY_BYTES) {
         Ok(vk) => vk,
         Err(_) => {
             return_false();
@@ -82,7 +82,7 @@ pub extern "C" fn call() {
         }
     };
 
-    let proof = match CanonicalDeserialize::deserialize_uncompressed(proof_bytes) {
+    let proof: Proof<Bn254> = match CanonicalDeserialize::deserialize_compressed(proof_bytes) {
         Ok(p) => p,
         Err(_) => {
             return_false();
@@ -90,7 +90,7 @@ pub extern "C" fn call() {
         }
     };
 
-    let public_input = match CanonicalDeserialize::deserialize_uncompressed(input_bytes) {
+    let public_input = match CanonicalDeserialize::deserialize_compressed(input_bytes) {
         Ok(i) => i,
         Err(_) => {
             return_false();
