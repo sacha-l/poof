@@ -6,14 +6,20 @@
 
 mod circuit;
 mod utils;
+mod verify;
 
 use ark_bn254::{Bn254, Fr};
 use ark_groth16::{Groth16, Proof, VerifyingKey, prepare_verifying_key};
 use rand::thread_rng;
+use std::fs;
 use circuit::MulCircuit;
 use utils::{save_verifying_key, save_proof, save_public_input};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Ensure output directories exist
+    fs::create_dir_all("../keys")?;
+    fs::create_dir_all("../proofs")?;
+
     let mut rng = thread_rng();
 
     // Sample inputs
@@ -39,5 +45,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     save_public_input(&c)?;
 
     println!("Proof generated and saved.");
+
+    // Optional: Immediately verify proof after creation (off-chain)
+    verify::verify_proof_from_files()?;
+
     Ok(())
 }
