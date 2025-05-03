@@ -77,3 +77,18 @@ pub fn save_calldata<F: PrimeField>(
     file.write_all(&buf)?;
     Ok(())
 }
+
+pub fn export_verifying_key_to_rs(
+    vk: &VerifyingKey<ark_bn254::Bn254>
+) -> std::io::Result<()> {
+    let mut buf = Vec::new();
+    vk.serialize_compressed(&mut buf)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+
+    std::fs::create_dir_all("../keys")?;
+    std::fs::write(
+        "../keys/verifying_key_bytes.rs",
+        format!("pub const VERIFYING_KEY_BYTES: &[u8] = &{:?};", buf),
+    )?;
+    Ok(())
+}

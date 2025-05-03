@@ -1,11 +1,13 @@
 // Minimal main.rs for CLI or test harness entrypoint.
 // Core logic is moved to lib.rs for reuse across CLI, tests, and smart contract targets.
+
 use ark_bn254::{Bn254, Fr};
 use ark_groth16::Groth16;
 use rand::thread_rng;
-
 use prover::circuit::MulCircuit;
 use prover::utils::save_calldata;
+use prover::utils::export_verifying_key_to_rs;
+
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Generating zkSNARK proof and calldata...");
@@ -25,8 +27,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let proof = Groth16::<Bn254>::create_random_proof_with_reduction(prove_circuit, &params, &mut rng)?;
 
     save_calldata(&proof, &c, "../calldata.bin")?;
-    println!("✅ Calldata written to ../calldata.bin");
+    export_verifying_key_to_rs(&params.vk)?;
 
+    println!("✅ Calldata written to ../calldata.bin");
     Ok(())
 }
 
