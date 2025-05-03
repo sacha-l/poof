@@ -30,7 +30,7 @@ pub fn save_verifying_key(vk: &VerifyingKey<ark_bn254::Bn254>) -> std::io::Resul
 
 pub fn save_proof(proof: &Proof<ark_bn254::Bn254>) -> std::io::Result<()> {
     let mut file = File::create("../proofs/proof.bin")?;
-    proof.serialize_uncompressed(&mut file)
+    proof.serialize_compressed(&mut file)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
     Ok(())
 }
