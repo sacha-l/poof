@@ -22,25 +22,48 @@ pub fn save_proving_key(pk: &ProvingKey<ark_bn254::Bn254>) -> std::io::Result<()
 }
 
 pub fn save_verifying_key(vk: &VerifyingKey<ark_bn254::Bn254>) -> std::io::Result<()> {
-    let mut file = File::create("../keys/verifying_key.bin")?;
-    vk.serialize_uncompressed(&mut file)
+    let out_path = "../keys/verifying_key.bin";
+
+    let mut buf = Vec::new();
+    vk.serialize_uncompressed(&mut buf)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+
+    println!("📦 Saved verifying key ({} bytes) to: {}", buf.len(), out_path);
+
+    let mut file = File::create(out_path)?;
+    file.write_all(&buf)?;
     Ok(())
 }
 
+
 pub fn save_proof(proof: &Proof<ark_bn254::Bn254>) -> std::io::Result<()> {
-    let mut file = File::create("../proofs/proof.bin")?;
-    proof.serialize_compressed(&mut file)
+    let mut buf = Vec::new();
+    proof.serialize_compressed(&mut buf)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+
+    let out_path = "../proofs/proof.bin";
+    println!("🔍 Compressed proof size: {} bytes", buf.len());
+    println!("📦 Saved proof to: {}", out_path);
+
+    let mut file = File::create(out_path)?;
+    file.write_all(&buf)?;
     Ok(())
 }
 
 pub fn save_public_input(c: &Fr) -> std::io::Result<()> {
-    let mut file = File::create("../proofs/public_input.bin")?;
-    c.serialize_uncompressed(&mut file)
+    let out_path = "../proofs/public_input.bin";
+
+    let mut buf = Vec::new();
+    c.serialize_uncompressed(&mut buf)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+
+    println!("📦 Saved public input ({} bytes) to: {}", buf.len(), out_path);
+
+    let mut file = File::create(out_path)?;
+    file.write_all(&buf)?;
     Ok(())
 }
+
 
 fn wrap_serialize_error<E: std::fmt::Display>(err: E) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::Other, format!("{}", err))
@@ -63,20 +86,21 @@ pub fn save_calldata<F: PrimeField>(
     buf.extend_from_slice(&proof_bytes);
 
     // Serialize public input
-    let mut input_bytes = Vec::new();
-
     let bytes = public_input.into_bigint().to_bytes_be();
     assert_eq!(bytes.len(), 32);
-    input_bytes.extend_from_slice(&bytes);
+    buf.extend_from_slice(&bytes);
 
-    assert_eq!(input_bytes.len(), 32);
-    buf.extend_from_slice(&input_bytes);
+    // Final length check: 4 (selector) + 128 (proof) + 32 (input) = 164
+    assert_eq!(buf.len(), 164);
 
-    // Write to file
     let mut file = File::create(path)?;
     file.write_all(&buf)?;
+
+    println!("📦 Saved calldata ({} bytes) to: {}", buf.len(), path);
+
     Ok(())
 }
+
 
 pub fn export_verifying_key_to_rs(
     vk: &VerifyingKey<ark_bn254::Bn254>
