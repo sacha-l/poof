@@ -1,0 +1,13 @@
+[package]
+name = "zkcli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ark-bn254 = "0.4"
+ark-groth16 = "0.4"
+ark-serialize = "0.4"
+ark-ff = "0.4"
+rand = "0.8"
+clap = { version = "4", features = ["derive"] }
+prover = { path = "../prover" }
