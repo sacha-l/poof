@@ -1,7 +1,9 @@
 
-_Poof_ is an experimental playing ground to build zk applications on Polkadot. _Poof_ started as an experiment to explore what's possible on the upcoming Polkadot Hub powered by the PVM (Polkadot Virtual Machine), set out to build a deniable messaging app powered by zero-knowledge “invisible stamps.” 
+_Poof_ started as an experiment to explore what's possible on the upcoming Polkadot Hub powered by the PVM (Polkadot Virtual Machine).
 
-Anyone can send a message in the open and "poof" &mdash; only the intended recipient can decrypt it and verify its sender. But the receiver can also make an exact same copy of that encrypted message meaning that no-one can actually prove who sent the message.
+It provides the framework for anyone to deploy a deniable messaging app powered by zero-knowledge “invisible stamps.” 
+Using inivisible stamps, anyone can send a message in the open and "poof" &mdash; only the intended recipient can decrypt it and verify its sender.
+But the receiver can also make an exact same copy of that encrypted message meaning that no-one can actually prove who sent the message.
 
 
 ## Architecture
