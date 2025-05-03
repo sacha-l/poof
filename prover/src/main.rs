@@ -8,6 +8,7 @@ use prover::circuit::MulCircuit;
 use prover::utils::save_calldata;
 use prover::utils::export_verifying_key_to_rs;
 
+include!("../../keys/verifying_key_bytes.rs");
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Generating zkSNARK proof and calldata...");

@@ -30,7 +30,7 @@
 use ark_ec::models::bn::Bn;
 use ark_bn254::{Config as Bn254Config};
 
-use ark_groth16::{Groth16, prepare_verifying_key, Proof, VerifyingKey};
+use ark_groth16::{Groth16, prepare_verifying_key};
 use ark_serialize::CanonicalDeserialize;
 use uapi::{HostFn, HostFnImpl as api, ReturnFlags};
 use core::alloc::Layout;
@@ -66,23 +66,22 @@ pub extern "C" fn deploy() {}
 
 #[polkavm_derive::polkavm_export]
 pub extern "C" fn call() {
-    // Allocate enough for selector (4 bytes) + compressed proof (256 bytes) + input (32 bytes)
-    let mut calldata = [0u8; 4 + 256 + 32];
-
+    // Total calldata = 4 (selector) + 128 (compressed proof) + 32 (compressed input)
+    let mut calldata = [0u8; 4 + 128 + 32];
     api::call_data_copy(&mut calldata, 0);
 
-    let proof_bytes = &calldata[4..260];
-    let input_bytes = &calldata[260..];
+    let proof_bytes = &calldata[4..132];
+    let input_bytes = &calldata[132..];
 
-    let vk: VerifyingKey<Bn254> = match CanonicalDeserialize::deserialize_compressed(VERIFYING_KEY_BYTES) {
+    let vk = match CanonicalDeserialize::deserialize_uncompressed(VERIFYING_KEY_BYTES) {
         Ok(vk) => vk,
         Err(_) => {
-            return_false();
+            return_bool(false);
             return;
         }
     };
 
-    let proof: Proof<Bn254> = match CanonicalDeserialize::deserialize_compressed(proof_bytes) {
+    let proof = match CanonicalDeserialize::deserialize_compressed(proof_bytes) {
         Ok(p) => p,
         Err(_) => {
             return_false();
