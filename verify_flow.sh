@@ -12,12 +12,13 @@ RUST_ADDRESS=$(cast send --account dev-account --create "$(xxd -p -c 99999 verif
 echo "✅ Rust contract deployed at: $RUST_ADDRESS"
 
 echo "🧾 Compiling Solidity wrapper..."
-npx @parity/revive@latest --bin contracts/CallVerifier.sol
+npx @parity/revive@latest --bin verifier-contract/CallVerifier.sol
 
 echo "📦 Deploying Solidity wrapper..."
-SOL_WRAPPER=contracts/CallVerifier_sol_CallVerifier.polkavm
+SOL_WRAPPER=verifier-contract_CallVerifier_sol_VerifyFromSolidity.polkavm
 SOL_ADDRESS=$(cast send --account dev-account --create "$(xxd -p -c 99999 $SOL_WRAPPER)" --json | jq -r .contractAddress)
 echo "✅ Solidity wrapper deployed at: $SOL_ADDRESS"
 
-echo "🧪 Calling Solidity wrapper to invoke zkSNARK verifier..."
-cast call $SOL_ADDRESS "verify(address) returns (bool)" $RUST_ADDRESS
+echo "📨 Calling Solidity wrapper to test zkSNARK verification..."
+CALldata_HEX=$(xxd -p calldata.bin | tr -d '\n')
+cast call $SOL_ADDRESS "verify(bytes,address)(bool)" 0x$CALldata_HEX $RUST_ADDRESS
