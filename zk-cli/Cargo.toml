@@ -11,3 +11,4 @@ ark-ff = "0.4"
 rand = "0.8"
 clap = { version = "4", features = ["derive"] }
 prover = { path = "../prover" }
+anyhow = "1.0.98"
