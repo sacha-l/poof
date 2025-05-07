@@ -1,5 +1,7 @@
 
-![Poof banner](assets/poof-banner.png)
+<p align="center">
+  <img src="assets/poof-banner.png" alt="Poof." width="100%">
+</p>
 
 _Poof_ is a set of tools to help build applications that require a zero-knowledge proving system using public verifiability.
 
