@@ -18,7 +18,6 @@ use std::fs::{self, File};
 use std::io::{BufReader, Write};
 
 use crate::circuit::MulCircuit;
-use crate::utils::{save_proof, save_public_input, save_verifying_key};
 
 /// Generate a Groth16 proof for a * b = c
 pub fn generate_proof(a: u64, b: u64) -> Result<(Proof<Bn254>, Fr, ProvingKey<Bn254>), Box<dyn std::error::Error>> {

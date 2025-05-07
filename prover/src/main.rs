@@ -10,7 +10,7 @@ use prover::utils::export_verifying_key_to_rs;
 use prover::generate_proof;
 use prover::verify_proof;
 
-include!("../../keys/verifying_key_bytes.rs");
+// include!("../../keys/verifying_key_bytes.rs");
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Generating zkSNARK proof and calldata...");
@@ -41,7 +41,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 mod tests {
     use super::*;
     use ark_bn254::Fr;
-    use prover::load_verifying_key_from_file;
 
     #[test]
     fn test_valid_proof_verifies() {

@@ -6,7 +6,6 @@
 
 use ark_bn254::{Fr};
 use ark_groth16::{Proof, ProvingKey, VerifyingKey};
-use ark_serialize::CanonicalDeserialize;
 use ark_ff::PrimeField;
 use std::fs::File;
 use std::io::Write;
@@ -17,7 +16,7 @@ use ark_ff::BigInteger;
 pub fn save_proving_key(pk: &ProvingKey<ark_bn254::Bn254>) -> std::io::Result<()> {
     let mut file = File::create("../keys/proving_key.bin")?;
     pk.serialize_uncompressed(&mut file)
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;;
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
     Ok(())
 }
 
