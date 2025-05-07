@@ -1,4 +1,8 @@
 
+<p align="center">
+  <img src="assets/poof-banner.png" alt="Poof." width="100%">
+</p>
+
 _Poof_ is a set of tools to help build applications that require a zero-knowledge proving system using public verifiability.
 
 ## How it works
@@ -63,6 +67,10 @@ cargo run -p zkcli -- \
   --input  ../proofs/public_input.bin \
   --vk     ../keys/verifying_key.bin
 ```
+
+## Features
+
+- **You can adjust the contract heap size to your needs.** The script A 512 KiB static heap costs code-space and deploy gas; if the high-water mark is only 140 KiB you can safely drop the constant to 192 KiB and cut contract size/gas.
 
 ## Application circuits to explore
 
@@ -132,7 +140,6 @@ fn oom(_: core::alloc::Layout) -> ! {
     unsafe { core::arch::asm!("unimp"); core::hint::unreachable_unchecked() }
 }
 ```
-- need to use no alloc 
 
 Fix:
 - 1. Ensure all deserialization uses fixed-size buffers
