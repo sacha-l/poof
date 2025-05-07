@@ -3,7 +3,11 @@
   <img src="assets/poof-banner.png" alt="Poof." width="60%">
 </p>
 
-_Poof_ is a set of tools to help build applications that require a zero-knowledge proving system using public verifiability.
+_Poof_ provides a framework to easily build and deploy applications that require zero-knowledge proofs.
+
+As an initial "poof-of-concept", users are able to use a CLI to generate and verify Groth16 proofs for a simple multiplication circuit. Once their verifying key is generated, they can run a script to deploy their verifier contract on-chain along with a Solidity business logic contract designed to call into the verifier and to make it easy to build a user facing interfact. 
+
+Poof is the first step forward towards making it easy for anyone to build and deploy ZK applications that run directly on the PVM.
 
 ## How it works
 
@@ -40,13 +44,12 @@ A Solidity wrapper contract designed to call into the Rust contract provides the
 - Users generate their own proofs offchain.
 - Contract contains the correct verifying key (VK) and wasn't tampered with.
 - Prover and verifier must agree on the exact circuit logic, its for the application-specifc business logic to define how incentives can be best aligned.
+- Verification key is a fixed size
 
 ##  Challenges
-- needing to use an allocator in the rust contrat to verify the proof
-- global allocator would make it possible for any inputs 
-- however without it we cannot expect variable proof sizes or keys. /Your use case is fixed-circuit (same verifying key forever).
+- Needing to use an allocator in the Rust contract
 - Even a dummy allocator (like one returning null_mut()) will not work, because the PVM trap system interprets any such call as undefined memory behavior, and your contract gets ContractTrapped.
-- All deserialization, proof verification, and cryptographic work must not allocate at runtime.
+- All deserialization, proof verification, and cryptographic work must not allocate at runtime
 
 ## CLI
 
@@ -68,9 +71,17 @@ cargo run -p zkcli -- \
   --vk     ../keys/verifying_key.bin
 ```
 
-## Features
+Run script for deploying the verifier contract:
 
-- **You can adjust the contract heap size to your needs.** The script A 512 KiB static heap costs code-space and deploy gas; if the high-water mark is only 140 KiB you can safely drop the constant to 192 KiB and cut contract size/gas.
+```sh
+./deploy_verifier.sh
+```
+
+Run script for submitting the proof:
+
+```sh
+./verify_proof.sh
+```
 
 ## Application circuits to explore
 
@@ -82,13 +93,17 @@ This could even be a game where the business logic (on the Solidity side) allows
 **"Word to mouth inviations"**. Verifier contract is deployed designed to verify whether a prover has a specific code. Business logic handles sending invites out. Codes are only given offline, word to mouth to invitees. The app sends an invitation NFT for participants who submit correct proofs.
 
 
-**"Deniable messaging"**. 
+**"Deniable messaging"**.
 
 
 ## Future direction
 
-- Add different proving signature schemes to the `prover` library.
-- Add functionality to launch p2p relayers
+## Add different zk proving schemes to the `prover` library
+
+These could include:
+- Plonk (Bellman-CE, zk Plonk, Plonky2)
+- Marlin 
+
 
 ### Make it easy to add new circuits
 
@@ -106,108 +121,21 @@ pub trait CircuitDefinition {
 }
 ```
 
-```rust
-const HEAP_SIZE: usize = 256 * 1024;
-static mut HEAP: [u8; HEAP_SIZE] = [0; HEAP_SIZE];
-static mut OFFSET: usize = 0;
+And then use the CLI to call specific circuits passing in parameters directly:
 
-struct Bump;
-
-unsafe impl core::alloc::GlobalAlloc for Bump {
-    unsafe fn alloc(&self, layout: core::alloc::Layout) -> *mut u8 {
-        let align = layout.align();
-        let size  = layout.size();
-        let mut cur = OFFSET;
-
-        // align
-        let mis = cur % align;
-        if mis != 0 { cur += align - mis; }
-
-        if cur + size > HEAP_SIZE { return core::ptr::null_mut() }
-        let ptr = HEAP.as_mut_ptr().add(cur);
-        OFFSET = cur + size;
-        ptr
-    }
-    unsafe fn dealloc(&self, _p: *mut u8, _l: core::alloc::Layout) {}
-}
-
-#[global_allocator]
-static ALLOC: Bump = Bump;
-
-#[alloc_error_handler]
-fn oom(_: core::alloc::Layout) -> ! {
-    // graceful PolkaVM trap
-    unsafe { core::arch::asm!("unimp"); core::hint::unreachable_unchecked() }
-}
+```bash
+zk-cli prove --multiplication --a 3 --b 4 --c 12
 ```
 
-Fix:
-- 1. Ensure all deserialization uses fixed-size buffers
-- Ark-works uses smallvec internally so heap is needed
+### Turn into self hosted client software
 
-## Architecture
+Make it a self-hosted P2P based app. This would open up possibilities to run applications that don't require public verifiers. Also, it could add improvements to:
+- Key management issues
+- Extending nodes so they can store proofs
+- Create products for network nodes, building community around deploying verifier contracts and hosting infrastructure to power the application UX
+- Add functionality to launch p2p relayers
 
-```ascii
-
-[User Device / CLI]
-   |
-   | 1. Inputs:
-   |   - message: "The eagle lands at dawn"
-   |   - recipient: @agent47
-   |
-   ▼
-╭────────────────────────────╮
-│        Prover CLI Tool     │  ◄── `zkcli prove --message "..." --recipient ...`
-│  (ephemeral encryption +   │
-│   zkSNARK generation)      │
-╰────────────┬───────────────╯
-             │
-             │ Output: `spirit box`
-             │   {
-             │     proof,
-             │     ephemeral_pubkey,
-             │     ciphertext (AES-GCM),
-             │     recipient_id,
-             │     optional commitment hash
-             │   }
-             │
-             ▼
-  ╭──────────────────────────────────╮
-  │     Spirit Box Delivery Layer    │  ◄── P2P, Matrix, Whisper, IPFS, contract mailbox
-  ╰──────────────────────────────────╯
-             │
-             ▼
-  ╭──────────────────────────────────╮
-  │        Recipient Client App      │  ◄── recipient opens spirit box
-  │ - Uses their secret key          │
-  │ - Decrypts message via ECDH + AES│
-  │ - Simulates SNARK verifier       │
-  │   to privately verify sender     │
-  ╰──────────────────────────────────╯
-             │
-             ▼
-╭────────────────────────────────────────────────╮
-│  [Optional] Public Verifiability (on-chain)    │
-│   - Recipient hashes message + proof           │
-│   - Submits proof to contract (PVM)            │
-│   - Verifier returns true/false                │
-╰────────────────────────────────────────────────╯
-```
-
-## UX Overview
-
-For Poof, the zk-seance deniable messaging app, I envision a UX around using a simple mailbox. 
-
-- **Magic Box & Keys**: Sender generates a one-time (ephemeral) keypair and encrypts the message under a shared secret (Diffie–Hellman with the receiver’s long-term public key). Receiver holds a long-term private key that both derives the shared secret and verifies proofs.
-- **Invisible Stamp (ZK Proof)**: Sender attaches a zero-knowledge proof (“the stamp”) attesting that the ciphertext was correctly formed under their ephemeral key and the receiver’s public key. This is a designated-verifier proof: only the receiver can check it, and only they can simulate identical proofs themselves
-- **Mailbox Notification**: When the sender pushes (epk, C, Π) to the relay/server for the receiver, the server marks “unread” for that mailbox. A WebSocket event flips the on-screen mailbox lamp from “off” to “glowing,” letting the receiver know there’s something waiting.
-- **Opening & Reading**: Receiver clicks the mailbox, uses their private key to verify the proof, and—if valid—decrypts the message. All this happens without leaking sender identity or message contents to anyone else.
-
-## Future plans
-
-### Turn into self hosted app
-
-Make it a self-hosted P2P based app so that users can send messages on the network, store messages locally, have better key management and use verifier periodically. 
+Here's an example of extending the Poof framework to a libp2p node:
 
 ```ascii
              +----------------------+
@@ -246,7 +174,7 @@ Make it a self-hosted P2P based app so that users can send messages on the netwo
                        ▼
              +----------------------+
              |  Verifier Contract   |
-             |  (optional on‐chain) |
+             |  (on‐chain)          |
              +----------------------+
 ```
 

@@ -3,6 +3,7 @@
 // - Verifying key to ../keys/verifying_key.bin
 // - zkSNARK proof to ../proofs/proof.bin
 // - Public input to ../proofs/public_input.bin
+// - calldata to ../calldata.bin
 
 use ark_bn254::{Fr};
 use ark_groth16::{Proof, ProvingKey, VerifyingKey};
