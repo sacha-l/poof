@@ -1,6 +1,5 @@
 [workspace]
 members = [
     "prover",
-    "verifier-contract",
     "zk-cli"
 ]
