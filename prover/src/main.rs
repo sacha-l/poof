@@ -3,6 +3,7 @@
 
 use ark_bn254::{Bn254, Fr};
 use ark_groth16::Groth16;
+use prover::utils::add_coordinate_debug_to_main;
 use rand::thread_rng;
 use prover::circuit::MulCircuit;
 use prover::utils::save_calldata;
@@ -30,6 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let proof = Groth16::<Bn254>::create_random_proof_with_reduction(prove_circuit, &params, &mut rng)?;
 
     save_calldata(&proof, &c, "../calldata.bin")?;
+    add_coordinate_debug_to_main(&proof, &c)?;
     export_verifying_key_to_rs(&params.vk)?;
 
     println!("✅ Calldata written to ../calldata.bin");

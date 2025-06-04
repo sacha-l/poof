@@ -3,3 +3,7 @@
 /proofs
 /*.polkavm
 /*.bin
+node_modules/
+calldata.bin
+/deploy
+

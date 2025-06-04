@@ -16,6 +16,7 @@ on the BN254 elliptic curve.
 ### Coordinate System Compatibility
 Ethereum's alt_bn128 precompile expects G2 coordinates in a specific order that
 differs from arkworks' internal representation:
+
 - **Arkworks**: G2(x, y) where x = c0 + c1*i, y = c0 + c1*i stored as [c0, c1, c0, c1]
 - **Ethereum**: Expects [c1, c0, c1, c0] (imaginary part first, then real part)
 
@@ -23,7 +24,7 @@ This affects both proof generation and verifying key embedding in contracts.
 
 ### ABI Encoding Structure
 The generated calldata follows Ethereum's ABI specification:
-```
+```ignore
 [4-byte function selector][32-byte offset][32-byte length][data][padding]
 ```
 
@@ -42,13 +43,13 @@ use sha3::{Digest, Keccak256};
 use std::fs::{File, create_dir_all};
 use std::io::Write;
 
-/// Saves the proving key to binary format for reuse
+/// Saves the proving key to binary format for reuse.
 /// 
 /// # Arguments
 /// * `pk` - The Groth16 proving key to serialize
 /// 
 /// # File Output
-/// Creates `../keys/proving_key.bin` containing the uncompressed proving key
+/// Creates `../keys/proving_key.bin` containing the uncompressed proving key.
 pub fn save_proving_key(pk: &ProvingKey<Bn254>) -> std::io::Result<()> {
     let mut file = File::create("../keys/proving_key.bin")?;
     pk.serialize_uncompressed(&mut file)
@@ -57,7 +58,7 @@ pub fn save_proving_key(pk: &ProvingKey<Bn254>) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Saves the verifying key to binary format
+/// Saves the verifying key to binary format.
 /// 
 /// The verifying key contains the public parameters needed for proof verification:
 /// - alpha_g1, beta_g2, gamma_g2, delta_g2: trusted setup parameters
@@ -67,11 +68,11 @@ pub fn save_proving_key(pk: &ProvingKey<Bn254>) -> std::io::Result<()> {
 /// * `vk` - The Groth16 verifying key to serialize
 /// 
 /// # File Output  
-/// Creates `../keys/verifying_key.bin` containing the uncompressed verifying key
+/// Creates `../keys/verifying_key.bin` containing the uncompressed verifying key.
 pub fn save_verifying_key(vk: &VerifyingKey<Bn254>) -> std::io::Result<()> {
     let out_path = "../keys/verifying_key.bin";
 
-    let mut buf = Vec::new();
+    let mut buf: Vec<u8> = Vec::new();
     vk.serialize_uncompressed(&mut buf)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
@@ -82,7 +83,7 @@ pub fn save_verifying_key(vk: &VerifyingKey<Bn254>) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Saves a Groth16 proof in compressed binary format
+/// Saves a Groth16 proof in compressed binary format.
 /// 
 /// A Groth16 proof consists of three elliptic curve points:
 /// - A: G1 point (compressed: 32 bytes)  
@@ -109,7 +110,7 @@ pub fn save_proof(proof: &Proof<Bn254>) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Saves the public input (witness) for the circuit
+/// Saves the public input (witness) for the circuit.
 /// 
 /// In our multiplication circuit (a * b = c), the public input is the result 'c'.
 /// This value must be provided during verification to ensure the proof
@@ -134,6 +135,10 @@ pub fn save_public_input(c: &Fr) -> std::io::Result<()> {
     Ok(())
 }
 
+//================================================================================================
+// ETHEREUM CALLDATA GENERATION
+//================================================================================================
+
 /// Generates Ethereum-compatible calldata for proof verification
 /// 
 /// This function creates properly ABI-encoded calldata that can be used to call
@@ -148,7 +153,7 @@ pub fn save_public_input(c: &Fr) -> std::io::Result<()> {
 /// 
 /// ## ABI Encoding Structure
 /// The calldata follows Ethereum's ABI specification for dynamic bytes:
-/// ```
+/// ```ignore
 /// [4 bytes]  Function selector (keccak256("verifyProofFromCalldata(bytes)")[0:4])
 /// [32 bytes] Offset to data (0x20 = 32 bytes)
 /// [32 bytes] Length of data (288 bytes)
@@ -162,10 +167,10 @@ pub fn save_public_input(c: &Fr) -> std::io::Result<()> {
 /// * `path` - File path to write the calldata binary
 /// 
 /// # File Output
-/// Creates a binary file containing complete transaction calldata ready for Ethereum
+/// Creates a binary file containing complete transaction calldata ready for Ethereum.
 /// 
 /// # Example Usage
-/// ```rust
+/// ```ignore
 /// save_calldata(&proof, &Fr::from(12u64), "../calldata.bin")?;
 /// ```
 pub fn save_calldata<F: PrimeField>(
@@ -193,9 +198,7 @@ pub fn save_calldata<F: PrimeField>(
     inner_data.extend_from_slice(&field_element_to_32_bytes(&proof.a.y));
     
     // uint[2][2] b - G2 point B coordinates (128 bytes)
-    // ⚠️  CRITICAL: Ethereum coordinate order fix applied here
-    // Arkworks: [x.c0, x.c1, y.c0, y.c1] (real part first)
-    // Ethereum: [x.c1, x.c0, y.c1, y.c0] (imaginary part first)
+    // ETHEREUM ORDER: [c1, c0, c1, c0] (imaginary first, then real)
     inner_data.extend_from_slice(&field_element_to_32_bytes(&proof.b.x.c1)); // x imaginary
     inner_data.extend_from_slice(&field_element_to_32_bytes(&proof.b.x.c0)); // x real
     inner_data.extend_from_slice(&field_element_to_32_bytes(&proof.b.y.c1)); // y imaginary
@@ -249,8 +252,8 @@ pub fn save_calldata<F: PrimeField>(
     println!("\n🔗 Complete calldata for testing:");
     println!("{}", hex_string);
     
-    // Debug output for troubleshooting coordinate issues
-    println!("\n🔍 Proof components (Ethereum coordinate order):");
+    // Debug output for coordinate order confirmation
+    println!("\n🔍 Proof components (ETHEREUM coordinate order - c1,c0,c1,c0):");
     println!("A.x: 0x{}", hex::encode(field_element_to_32_bytes(&proof.a.x)));
     println!("A.y: 0x{}", hex::encode(field_element_to_32_bytes(&proof.a.y)));
     println!("B.x.c1 (imag): 0x{}", hex::encode(field_element_to_32_bytes(&proof.b.x.c1)));
@@ -260,6 +263,57 @@ pub fn save_calldata<F: PrimeField>(
     println!("C.x: 0x{}", hex::encode(field_element_to_32_bytes(&proof.c.x)));
     println!("C.y: 0x{}", hex::encode(field_element_to_32_bytes(&proof.c.y)));
     println!("Public input: 0x{}", hex::encode(pad_to_32_bytes(&input_bytes)));
+    
+    Ok(())
+}
+
+/// Generate alternative calldata with reversed G2 coordinate order for testing.
+pub fn save_calldata_alternative<F: PrimeField>(
+    proof: &Proof<Bn254>,
+    public_input: &F,
+    path: &str,
+) -> std::io::Result<()> {
+    let function_sig = "verifyProofFromCalldata(bytes)";
+    let mut hasher = Keccak256::new();
+    hasher.update(function_sig.as_bytes());
+    let hash = hasher.finalize();
+    let function_selector = &hash[0..4];
+    
+    let mut inner_data = Vec::new();
+    
+    // A point (same as before)
+    inner_data.extend_from_slice(&field_element_to_32_bytes(&proof.a.x));
+    inner_data.extend_from_slice(&field_element_to_32_bytes(&proof.a.y));
+    
+    // B point - ARKWORKS ORDER: [c0, c1, c0, c1] (real first)
+    inner_data.extend_from_slice(&field_element_to_32_bytes(&proof.b.x.c0)); // x real first
+    inner_data.extend_from_slice(&field_element_to_32_bytes(&proof.b.x.c1)); // x imaginary second
+    inner_data.extend_from_slice(&field_element_to_32_bytes(&proof.b.y.c0)); // y real first
+    inner_data.extend_from_slice(&field_element_to_32_bytes(&proof.b.y.c1)); // y imaginary second
+    
+    // C point (same as before)
+    inner_data.extend_from_slice(&field_element_to_32_bytes(&proof.c.x));
+    inner_data.extend_from_slice(&field_element_to_32_bytes(&proof.c.y));
+    
+    // Public input (same as before)
+    let input_bytes = public_input.into_bigint().to_bytes_be();
+    inner_data.extend_from_slice(&pad_to_32_bytes(&input_bytes));
+    
+    // Build calldata
+    let mut calldata = Vec::new();
+    calldata.extend_from_slice(function_selector);
+    calldata.extend_from_slice(&u256_to_bytes(0x20));
+    calldata.extend_from_slice(&u256_to_bytes(inner_data.len() as u64));
+    calldata.extend_from_slice(&inner_data);
+    
+    let padding_needed = (32 - (inner_data.len() % 32)) % 32;
+    for _ in 0..padding_needed {
+        calldata.push(0);
+    }
+    
+    std::fs::write(path, &calldata)?;
+    
+    println!("📦 Alternative calldata (c0,c1,c0,c1 order): 0x{}", hex::encode(&calldata));
     
     Ok(())
 }
@@ -275,6 +329,10 @@ pub fn create_transaction_calldata<F: PrimeField>(
 ) -> std::io::Result<()> {
     save_calldata(proof, public_input, path)
 }
+
+//================================================================================================
+// SOLIDITY CONTRACT GENERATION
+//================================================================================================
 
 /// Generates a complete Solidity verifier contract with embedded verifying key
 /// 
@@ -348,8 +406,7 @@ contract Groth16Verifier {{
     /**
      * @dev Constructor embeds the verifying key from trusted setup
      * 
-     * COORDINATE ORDER: G2 points use Ethereum's expected format
-     * [x.imaginary, x.real, y.imaginary, y.real] to match alt_bn128 precompile
+     * COORDINATE ORDER: Ethereum order [imaginary, real] to match calldata generation
      */
     constructor() {{
         // Generated verifying key from trusted setup
@@ -515,19 +572,19 @@ library Pairing {{
         field_to_uint_string(&vk.alpha_g1.x),
         field_to_uint_string(&vk.alpha_g1.y),
         
-        // Beta (G2) - ETHEREUM COORDINATE ORDER: [imaginary, real, imaginary, real]
+        // Beta (G2) - ETHEREUM ORDER: [imaginary, real] to match calldata
         field_to_uint_string(&vk.beta_g2.x.c1), // x imaginary part first
         field_to_uint_string(&vk.beta_g2.x.c0), // x real part second
         field_to_uint_string(&vk.beta_g2.y.c1), // y imaginary part first
         field_to_uint_string(&vk.beta_g2.y.c0), // y real part second
         
-        // Gamma (G2) - same coordinate transformation
+        // Gamma (G2) - same coordinate order
         field_to_uint_string(&vk.gamma_g2.x.c1),
         field_to_uint_string(&vk.gamma_g2.x.c0),
         field_to_uint_string(&vk.gamma_g2.y.c1),
         field_to_uint_string(&vk.gamma_g2.y.c0),
         
-        // Delta (G2) - same coordinate transformation  
+        // Delta (G2) - same coordinate order  
         field_to_uint_string(&vk.delta_g2.x.c1),
         field_to_uint_string(&vk.delta_g2.x.c0),
         field_to_uint_string(&vk.delta_g2.y.c1),
@@ -548,6 +605,32 @@ library Pairing {{
     
     println!("✅ Generated complete verifier contract: ./contracts/Groth16Verifier.sol");
     println!("📋 Contract includes embedded verifying key and can be deployed directly");
+    Ok(())
+}
+
+//================================================================================================
+// DEBUG FUNCTIONS FOR COORDINATE TESTING
+//================================================================================================
+
+/// Generate both coordinate orders for comprehensive testing
+pub fn debug_coordinate_systems<F: PrimeField>(
+    proof: &Proof<Bn254>,
+    public_input: &F,
+) -> std::io::Result<()> {
+    println!("\n🔬 DEBUGGING COORDINATE SYSTEMS");
+    println!("Generating calldata with both coordinate orderings...\n");
+
+    // Generate main calldata (c1, c0, c1, c0 order) - Ethereum order
+    save_calldata(proof, public_input, "../calldata.bin")?;
+    
+    // Generate alternative calldata (c0, c1, c0, c1 order) - Arkworks order
+    save_calldata_alternative(proof, public_input, "../calldata_alt.bin")?;
+    
+    println!("\n📋 Test both calldata files with your contract:");
+    println!("   - ../calldata.bin (ethereum order: c1,c0,c1,c0)");
+    println!("   - ../calldata_alt.bin (arkworks order: c0,c1,c0,c1)");
+    println!("🎯 The main calldata should work with the updated contract!");
+    
     Ok(())
 }
 
@@ -616,6 +699,10 @@ fn field_to_decimal_string<F: PrimeField>(field: &F) -> String {
     field.into_bigint().to_string()
 }
 
+//================================================================================================
+// DEBUG AND INFORMATION FUNCTIONS
+//================================================================================================
+
 /// Prints detailed information about a verifying key for debugging
 /// 
 /// This function outputs all the verifying key components in both
@@ -648,16 +735,34 @@ pub fn print_verifying_key_info(vk: &VerifyingKey<Bn254>) {
 // PUBLIC API FUNCTIONS
 //================================================================================================
 
-/// Main entry point for verifying key processing
+/// Main entry point for verifying key processing with coordinate debugging
 /// 
 /// This function is called from main.rs to generate the complete
-/// Solidity verifier contract with the embedded verifying key.
+/// Solidity verifier contract and debug coordinate systems.
 /// 
 /// # Arguments
 /// * `vk` - The verifying key from the trusted setup
 pub fn export_verifying_key_to_rs(vk: &VerifyingKey<Bn254>) -> std::io::Result<()> {
     generate_complete_verifier_contract(vk)?;
     // Uncomment for debugging: print_verifying_key_info(vk);
+    Ok(())
+}
+
+/// Add coordinate debugging to existing proof generation
+pub fn add_coordinate_debug_to_main<F: PrimeField>(
+    proof: &Proof<Bn254>, 
+    public_input: &F
+) -> std::io::Result<()> {
+    
+    // Generate both coordinate orders for testing
+    debug_coordinate_systems(proof, public_input)?;
+    
+    println!("\n🎯 TESTING STRATEGY:");
+    println!("1. Deploy your contract");
+    println!("2. Test ../calldata.bin - should work with updated contract");
+    println!("3. Test ../calldata_alt.bin - for comparison");
+    println!("4. The main calldata uses Ethereum coordinate order");
+    
     Ok(())
 }
 
