@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ───────────────────────── CONFIG ──────────────────────────
-export ETH_RPC_URL="${ETH_RPC_URL:-https://westend-asset-hub-eth-rpc.polkadot.io}"
+export ETH_RPC_URL="${ETH_RPC_URL:-https://testnet-passet-hub-eth-rpc.polkadot.io}"
 
 ACCOUNT_ALIAS="dev-account"
 PROVER_BIN="zkcli"
